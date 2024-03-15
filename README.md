@@ -8,9 +8,10 @@ The goal of this project is to run real, entertaining debates in front of a live
 
 You have probably seen fascinating responses written by GPT-4, Gemini, and other AI models. But you may never heard these AIs speak in a context where they are conversing with each other.
 
-This project explores the boundaries of another eerie and magical moment when [AI seems human](https://www.youtube.com/watch?v=uCWKZWieMSY).
+This project explores the boundaries of an eerie and magical moment when [AI seems human](https://www.youtube.com/watch?v=uCWKZWieMSY).
 
-This project tests the limit of AIs in a format where they tend to do extremely well: Short responses on a topic. At the same time, the simple debate structure allows for some interesting experiments:
+This project also tests the limit of AIs in a format where they tend to do extremely well: Short arguments to support a general question. At the same time, the simple debate structure allows for some fascinating and important experiments:
+
 1. How well does text-to-speech to produce natural-sounding debate speech? This is a demanding test because formal debate includes long expositions. Using correct intonation requires the speaker to "understand" the meaning of the text. This is a different generative AI problem from producing text itself.
 2. How well can automatic video generation produces realistic or animated figures to speak during the debate? This is also likely to be a generative AI problem, and it is the focus of many applications including [Synthesia](https://www.synthesia.io/) to [NVIDIA audio2face](https://www.nvidia.com/en-us/omniverse/apps/audio2face/).
 3. How much can we improve AI debate performance by allowing AIs to either search libraries of prepared material or conduct research and debate preparation before speaking. This is a slightly different problem from the standard use case of [RAGs](https://aws.amazon.com/what-is/retrieval-augmented-generation/) but is a fairly common problem in organizational contexts where arguments are constructed from many sub-arguments that may each be deep and demanding.
