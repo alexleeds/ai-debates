@@ -3,48 +3,52 @@ from google.cloud import texttospeech
 from openai import OpenAI
 import warnings
 
-def openai_text_to_speech(input_text, text_label):
-    openai_client = OpenAI()
-    
-    response = openai_client.audio.speech.create(
-    model="tts-1",
-    voice="shimmer",
-    input=input_text
-    )
+def create_file_directory():
+    # Create a directory to save the audio files
+    audio_dir = Path(__file__).parent / "audio_files"
+    audio_dir.mkdir(parents=True, exist_ok=True)
 
-    # Manage unwanted deprecation warnings 
-    warnings.filterwarnings("ignore", category=DeprecationWarning)
-    
-    speech_file_path = Path(__file__).parent / (text_label+".mp3")
-    response.stream_to_file(speech_file_path)
+def text_to_speech(input_text, text_label, provider="google"):
+    create_file_directory()
+    audio_file_path = Path(__file__).parent / "audio_files" / f"{text_label}.mp3"
 
-    print('Audio content for ' + text_label + ' written to file.')
+    if provider == "google":
+        google_client = texttospeech.TextToSpeechClient()
 
-def google_cloud_text_to_speech(input_text, text_label):
+        synthesis_input = texttospeech.SynthesisInput(text=input_text)
+        voice = texttospeech.VoiceSelectionParams(
+            language_code="en-US",
+            name="en-US-Studio-O",
+            ssml_gender=texttospeech.SsmlVoiceGender.FEMALE,
+        )
+        audio_config = texttospeech.AudioConfig(
+            audio_encoding=texttospeech.AudioEncoding.MP3,
+            speaking_rate=1,
+            pitch=0,
+        )
 
-    google_client = texttospeech.TextToSpeechClient()
+        response = google_client.synthesize_speech(
+            input=synthesis_input, voice=voice, audio_config=audio_config
+        )
 
-    input_text = texttospeech.SynthesisInput(text=input_text)
+        with open(audio_file_path, "wb") as audio_file:
+            audio_file.write(response.audio_content)
 
-    # Note: the voice can also be specified by name.
-    # Names of voices can be retrieved with client.list_voices().
-    voice = texttospeech.VoiceSelectionParams(
-        language_code="en-US",
-        name="en-US-Studio-O",
-        ssml_gender=texttospeech.SsmlVoiceGender.FEMALE,
-    )
+    elif provider == "openai":
+        openai_client = OpenAI()
+        response = openai_client.audio.speech.create(
+            model="tts-1",
+            voice="shimmer",
+            input=input_text
+        )
 
-    audio_config = texttospeech.AudioConfig(
-        audio_encoding=texttospeech.AudioEncoding.MP3,
-        speaking_rate=1,
-        pitch=0,
-    )
+        response.stream_to_file(audio_file_path)
 
-    response = google_client.synthesize_speech(
-        request={"input": input_text, "voice": voice, "audio_config": audio_config}
-    )
+    else:
+        raise ValueError("Invalid provider specified.")
 
-    # The response's audio_content is binary.
-    with open(text_label+".mp3", "wb") as out:
-        out.write(response.audio_content)
-        print('Audio content for ' + text_label + ' written to file.')
+    print(f"Audio content for '{text_label}' written to file.")
+
+# # Example usage:
+# text_to_speech("Hello, this is a test.", "hello_google", provider="google")
+# text_to_speech("Hello, this is a test.", "hello_openai", provider="openai")

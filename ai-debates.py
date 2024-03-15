@@ -1,7 +1,7 @@
 """ This code runs a full debate between the OpenAI and Google
 AIs on a specified debate topic. 
 
-The full debate transcript is passed back and forth during the 
+The debate transcript is passed back and forth during the 
 debate as context for the response by each AI.
 
 To run this code, you must have OpenAI and Google accounts
@@ -20,16 +20,16 @@ import google.generativeai as genai
 from openai import OpenAI
 
 # Local imports
-from text_to_speech import google_cloud_text_to_speech
-from text_to_speech import openai_text_to_speech
+from text_to_speech import text_to_speech
 
 client = OpenAI
 
 debate_topic = "Standardized testing should be abolished."
 
+# In seconds!
 time_limits = {
     'opening_statement': 180,
-    'argument': 180,
+    'arguments': 180,
     'rebuttal': 120,
     'closing_statement': 120
 }
@@ -74,7 +74,7 @@ class DebateManager:
     def start_debate(self):
         # Start the debate process
 
-        intro_text_part1 = """Welcome to the very first of the Great AI Debates. 
+        intro_text_part1 = f"""Welcome to the very first of the Great AI Debates. 
         
         This debate will be conducted by me - your human host, Alex Leeds - 
         and feature two of the latest Artificial Intelligences: Open AI's GPT 4 
@@ -82,15 +82,16 @@ class DebateManager:
         
         Our debate topic for tonight is the following resolution: 
 
-        “Standardized testing should be abolished.” 
+        {self.topic}
         
         This debate will consist of four rounds. Each debater will take turns
-        presenting an opening statement, more detailed arguments, a rebuttal,
+        presenting an opening statement, a round of arguments, a rebuttal,
         and a closing statement.
 
         We will flip a digital coin to determine which AI takes each side. Doing that right now…\n 
         """
 
+        # Randomly determine affirmative and negative debators
         opponents = ["GPT 4", "Gemini Pro"]
         self.affirmative_debator = choice(opponents)
         opponents.remove(self.affirmative_debator)
@@ -107,45 +108,46 @@ class DebateManager:
         self.context += full_intro
         print(full_intro)
     
-    def get_response(self, speaker, prompt):
-        # Get response based on which AI is the speaker
-        if speaker == "GPT 4":
-            return get_response_from_openai(self.openai_client, self.context, prompt)
+    def run_debate_speech(self, round_title, round_prompt, speaker, affirmative):
+
+        # affirmative round title for transcript
+        if affirmative:
+            speech_title = f"{speaker}'s {round_title} (Affirmative)" 
         else:
-            return get_response_from_gemini(self.gemini_client, self.context, prompt)
+            speech_title = f"{speaker}'s {round_title} (Negative)"
+       
+        # Prompt that looks like this f"{speaker}, you have 3 minutes to present your opening statement:"
+        prompt = f"{speaker}, {round_prompt}"
+        self.context += ("\n" + prompt)
         
-    def output_speech_audio(self, speaker, speech_text, topic):
+        # get response from AI
         if speaker == "GPT 4":
-            openai_text_to_speech(speech_text, topic)
+            response = get_response_from_openai(self.openai_client, self.context, prompt)
+            text_to_speech(response, speech_title, provider="openai")
         else:
-            google_cloud_text_to_speech(speech_text, topic)
+            response = get_response_from_gemini(self.gemini_client, self.context, prompt)
+            text_to_speech(response, speech_title, provider="google")
+
+        # add response to transcript
+        self.context += f"{speech_title}:\n {response}\n"
+        
+        print(f"{speech_title}:\n {response}\n")
+
         return None
     
     def conduct_opening_statements(self):
 
+        round_title = "Opening Statement"
+        opening_prompt = f"you have {time_limits['opening_statement']/60} minutes to present your opening statement:"
+        
         # Affirmative opening statement
-        affirm_opening_prompt = f"{self.affirmative_debator}, you have 3 minutes to present your opening statement:"
-        self.context += affirm_opening_prompt
-        affirmative_response = self.get_response(self.affirmative_debator, affirm_opening_prompt)
-        title = f"{self.affirmative_debator}'s Opening Statement (Affirmative):"
-        print(title)
-        print(affirmative_response + "\n")
-        self.output_speech_audio(self.affirmative_debator, affirmative_response, title[:-1])
-        self.context += f"{self.affirmative_debator}'s Opening Statement (Affirmative): {affirmative_response}\n"
+        self.run_debate_speech(round_title, opening_prompt, self.affirmative_debator, affirmative=True)
+
+        # Negative opening statement
+        self.run_debate_speech(round_title, opening_prompt, self.negative_debator, affirmative=False)
+
+        return None
         
-
-
-        # Print and store opening statements for the negative debator
-        negative_opening_prompt = f"{self.negative_debator}, you have 3 minutes to present your opening statement:"
-        negative_response = self.get_response(self.negative_debator, negative_opening_prompt)
-        self.context += negative_opening_prompt
-        title = f"{self.negative_debator}'s Opening Statement (Negative):"
-        print(title)
-        print(negative_response + "\n")
-        self.output_speech_audio(self.negative_debator, negative_response, title[:-1])
-        self.context += f"{self.negative_debator}'s Opening Statement (Negative): {negative_response}\n"
-        
-
     def conduct_arguments(self):
         # Manage the argument rounds
         # Implement argument rounds
@@ -153,55 +155,35 @@ class DebateManager:
         argument_introduction = """That concludes our opening statements. We will now have one
         round of arguments by each side followed by a round of rebuttals by each side."""
 
-        print(argument_introduction)
         self.context += argument_introduction
+        print(argument_introduction)
 
-        # Affirmative Argument
-        affirm_argument_prompt = f"{self.affirmative_debator}, you have 3 minutes to present your arguments:"
-        affirmative_argument = self.get_response(self.affirmative_debator, affirm_argument_prompt)
-        self.context += affirm_argument_prompt
-        title = f"{self.affirmative_debator}'s Affirmative Arguments:"
-        print(title)
-        print(affirmative_argument + "\n")
-        self.context += f"{self.affirmative_debator}'s Affirmative Arguments: {affirmative_argument}\n"
-        self.output_speech_audio(self.affirmative_debator, affirmative_argument, title[:-1])
+        round_title = "Arguments"
+        arguments_prompt = f"you have {time_limits['arguments']/60} minutes to present your arguments:"
         
-        # Negative Argument
-        negative_argument_prompt = f"{self.negative_debator}, you have 3 minutes to present your arguments:"
-        negative_argument = self.get_response(self.negative_debator, negative_argument_prompt)
-        self.context += negative_argument_prompt
-        title = f"{self.negative_debator}'s Negative Arguments:"
-        print(title)
-        print(negative_argument + "\n")
-        self.context += f"{self.negative_debator}'s Negative Arguments: {negative_argument}\n"
-        self.output_speech_audio(self.negative_debator, negative_argument, title[:-1])
+        # Affirmative arguments
+        self.run_debate_speech(round_title, arguments_prompt, self.affirmative_debator, affirmative=True)
+
+        # Negative arguments
+        self.run_debate_speech(round_title, arguments_prompt, self.negative_debator, affirmative=False)
+
+        return None
 
     def conduct_rebuttals(self):
         # Implement rebuttal rounds
 
         rebuttal_introduction = """Each side now has an opportunity for rebuttal."""
 
-        print(rebuttal_introduction)
-        self.context += rebuttal_introduction
-            
-        # Affirmative Rebuttal
-        affirm_rebuttal_prompt = f"{self.affirmative_debator}, you have 2 minutes for your rebuttal:"
-        affirmative_rebuttal = self.get_response(self.affirmative_debator, affirm_rebuttal_prompt)
-        self.context += affirm_rebuttal_prompt
-        title = f"{self.affirmative_debator}'s Rebuttal:"
-        print(title)
-        print(affirmative_rebuttal + "\n")
-        self.context += f"{self.affirmative_debator}'s Rebuttal: {affirmative_rebuttal}\n"
-        self.output_speech_audio(self.affirmative_debator, affirmative_rebuttal, title[:-1])
+        round_title = "Rebuttal"
+        rebuttal_prompt = f"you have {time_limits['rebuttal']/60} minutes to present your rebuttal:"
         
-        # Negative Rebuttal
-        neg_rebuttal_prompt = f"{self.negative_debator}, you have 2 minutes for your rebuttal:"
-        negative_rebuttal = self.get_response(self.negative_debator, neg_rebuttal_prompt)
-        self.context += neg_rebuttal_prompt
-        title = f"{self.negative_debator}'s Rebuttal:"
-        print(negative_rebuttal + "\n")
-        self.context += f"{self.negative_debator}'s Rebuttal: {negative_rebuttal}\n"
-        self.output_speech_audio(self.negative_debator, negative_rebuttal, title[:-1])
+        # Affirmative rebuttal
+        self.run_debate_speech(round_title, rebuttal_prompt, self.affirmative_debator, affirmative=True)
+
+        # Negative rebuttal
+        self.run_debate_speech(round_title, rebuttal_prompt, self.negative_debator, affirmative=False)
+
+        return None
 
     def conduct_closing_statements(self):
 
@@ -210,22 +192,16 @@ class DebateManager:
         print(closing_introduction)
         self.context += closing_introduction
 
-        # Affirmative Closing Statement
-        affirm_closing_prompt = f"{self.affirmative_debator}, you have 2 minutes for your closing statements:"
-        affirmative_closing_statement = self.get_response(self.affirmative_debator, affirm_closing_prompt)
-        title = "{self.affirmative_debator}'s Closing Statement:"
-        print(title)
-        self.context += f"{self.affirmative_debator}'s Closing Statement: {affirmative_closing_statement}\n"
-        self.output_speech_audio(self.affirmative_debator, affirmative_closing_statement, title[:-1])
-            
-        # Negative Closing Statement
-        neg_closing_prompt = f"{self.negative_debator}, you have 2 minutes for your closing statements:"
-        negative_closing_statement = self.get_response(self.negative_debator, neg_closing_prompt)
-        title = f"{self.negative_debator}'s Closing Statement:"
-        print(title)
-        print(negative_closing_statement + "\n")
-        self.context += f"{self.negative_debator}'s Closing Statement: {negative_closing_statement}\n"
-        self.output_speech_audio(self.negative_debator, negative_closing_statement, title[:-1])
+        round_title = "Closing Statements"
+        closing_prompt = f"you have {time_limits['rebuttal']/60} minutes to present your closing statement:"
+        
+        # Affirmative closing statement
+        self.run_debate_speech(round_title, closing_prompt, self.affirmative_debator, affirmative=True)
+
+        # Negative closing statement
+        self.run_debate_speech(round_title, closing_prompt, self.negative_debator, affirmative=False)
+
+        return None
 
 if __name__ == '__main__':
     debate_manager = DebateManager(debate_topic, time_limits)
